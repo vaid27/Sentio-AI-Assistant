@@ -97,6 +97,21 @@ personality_presets = {
     "siri": "You are Sentio — polite, short answers, clean tone, slightly robotic but friendly like Siri."
 }
 
+# -------- LONG TERM MEMORY SAVE -------- #
+def save_memory(text):
+    with open("sentio_memory.txt", "a", encoding="utf-8") as f:
+        f.write(text + "\n")
+
+def load_memory():
+    if not os.path.exists("sentio_memory.txt"):
+        return ""
+    with open("sentio_memory.txt", "r", encoding="utf-8") as f:
+        return f.read()
+
+# Load memory on start
+long_term_memory = load_memory()
+
+
 
 def chat_with_sentio(prompt):
     try:
@@ -105,7 +120,7 @@ def chat_with_sentio(prompt):
         if len(conversation_history) > 30:
             conversation_history.pop(0)
 
-        memory_text = "\n".join(conversation_history)
+        memory_text = long_term_memory + "\n" + "\n".join(conversation_history)
 
         strict_prompt = (
     f"You are Sentio — a smart AI assistant. Your current personality is: {personality_presets[current_personality]}\n"
@@ -297,7 +312,6 @@ def set_alarm(time_string):
 
 
 
-
 if __name__ == '__main__':
     print("PyCharm")
     print("Testing Weather API…")
@@ -305,8 +319,8 @@ if __name__ == '__main__':
         f"https://api.openweathermap.org/data/2.5/weather?q=Delhi&appid={WEATHER_API_KEY}&units=metric"
     ).json())
 
-    alarms = {}   # store alarms
-    timers = {}   # store timers
+    alarms = {}
+    timers = {}
 
     while True:
         print('Listening...')
@@ -364,7 +378,7 @@ if __name__ == '__main__':
             matched = True
             continue
 
-        # -------- WEATHER FEATURE -------- #
+        # -------- WEATHER -------- #
         if "weather" in query or "temperature" in query:
             say("Which city should I check, Vaid?")
             city = takeCommand().lower()
@@ -407,7 +421,6 @@ if __name__ == '__main__':
             alarm_time = takeCommand().lower()
 
             try:
-                # Example: "7 am", "6 30 am"
                 alarm_time_24 = datetime.datetime.strptime(alarm_time, "%I %M %p").strftime("%H:%M")
             except:
                 try:
@@ -416,7 +429,7 @@ if __name__ == '__main__':
                     say("Sorry, I couldn't understand the alarm time.")
                     matched = True
                     continue
-            
+
             say(f"Alarm set for {alarm_time}.")
 
             def alarm_checker(target_time):
@@ -478,20 +491,32 @@ if __name__ == '__main__':
         if conversation_mode:
             conversation_mode = False
 
-        # -------- SPOTIFY SONG PLAYER -------- #
+        # -------- SPOTIFY -------- #
         if ("play" in query and "song" in query) or query.startswith("play "):
             say("Which song should I play, Vaid?")
             song = takeCommand().lower()
 
             if song != "":
                 say(f"Playing {song} on Spotify.")
-                search_url = f"https://open.spotify.com/search/{song.replace(' ', '%20')}"
-                webbrowser.open(search_url)
+                url = f"https://open.spotify.com/search/{song.replace(' ', '%20')}"
+                webbrowser.open(url)
                 matched = True
                 continue
             else:
                 say("I couldn't hear the song name. Please try again.")
                 continue
+
+        # -------- MEMORY COMMAND (STEP 5) -------- #
+        if "remember this" in query or "save this" in query:
+            say("Okay Vaid, tell me what to remember.")
+            info = takeCommand()
+
+            save_memory(f"{datetime.datetime.now()} - {info}")
+            long_term_memory = load_memory()
+
+            say("Got it. I will remember that.")
+            matched = True
+            continue
 
         # -------- OPEN ANY WEBSITE -------- #
         if query.startswith("open "):
@@ -525,8 +550,9 @@ if __name__ == '__main__':
             say(f"Goodbye, {USER_NAME}! See you soon.")
             break
 
-        # -------- DEFAULT AI CHAT -------- #
+        # -------- DEFAULT CHAT -------- #
         if not matched:
             chat_with_sentio(query)
+
 
 
