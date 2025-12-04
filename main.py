@@ -316,10 +316,6 @@ def set_alarm(time_string):
 
 if __name__ == '__main__':
     print("PyCharm")
-    print("Testing Weather API…")
-    print(requests.get(
-        f"https://api.openweathermap.org/data/2.5/weather?q=Delhi&appid={WEATHER_API_KEY}&units=metric"
-    ).json())
 
     while True:
         print('Listening...')
