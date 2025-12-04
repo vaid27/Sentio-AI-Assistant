@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import webbrowser
 import datetime
 import time
+import pyautogui
 import speech_recognition as rs
 import pyttsx3
 import requests
@@ -15,6 +16,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import pywhatkit as kit
+import screen_brightness_control as sbc
 conversation_history = []
 
 current_personality = "default"   # ok
@@ -319,9 +321,6 @@ if __name__ == '__main__':
         f"https://api.openweathermap.org/data/2.5/weather?q=Delhi&appid={WEATHER_API_KEY}&units=metric"
     ).json())
 
-    alarms = {}
-    timers = {}
-
     while True:
         print('Listening...')
         query = takeCommand().lower()
@@ -348,7 +347,7 @@ if __name__ == '__main__':
             say("Motivational mode activated. Let’s do this!")
             continue
 
-        elif "sentio siri mode" in query or "sentio siri style" in query:
+        elif "sentio siri mode" in query:
             current_personality = "siri"
             say("Siri-style mode activated.")
             continue
@@ -378,7 +377,7 @@ if __name__ == '__main__':
             matched = True
             continue
 
-        # -------- WEATHER -------- #
+        # -------- WEATHER FEATURE -------- #
         if "weather" in query or "temperature" in query:
             say("Which city should I check, Vaid?")
             city = takeCommand().lower()
@@ -407,7 +406,6 @@ if __name__ == '__main__':
                     time.sleep(sec)
                     say("Time's up, Vaid!")
 
-                import threading
                 threading.Thread(target=run_timer, args=(seconds,), daemon=True).start()
             except:
                 say("Sorry, I couldn't understand the timer duration.")
@@ -427,23 +425,107 @@ if __name__ == '__main__':
                     alarm_time_24 = datetime.datetime.strptime(alarm_time, "%I %p").strftime("%H:%M")
                 except:
                     say("Sorry, I couldn't understand the alarm time.")
-                    matched = True
                     continue
 
             say(f"Alarm set for {alarm_time}.")
 
             def alarm_checker(target_time):
                 while True:
-                    now = datetime.datetime.now().strftime("%H:%M")
-                    if now == target_time:
+                    if datetime.datetime.now().strftime("%H:%M") == target_time:
                         say("Vaid, your alarm is ringing!")
                         break
                     time.sleep(20)
 
-            import threading
             threading.Thread(target=alarm_checker, args=(alarm_time_24,), daemon=True).start()
 
             matched = True
+            continue
+
+        # -------- VOLUME CONTROL -------- #
+        if "increase volume" in query or "volume up" in query:
+            pyautogui.press("volumeup")
+            say("Volume increased.")
+            continue
+
+        if "decrease volume" in query or "volume down" in query:
+            pyautogui.press("volumedown")
+            say("Volume decreased.")
+            continue
+
+        if "mute" in query:
+            pyautogui.press("volumemute")
+            say("Muted.")
+            continue
+
+        if "unmute" in query:
+            pyautogui.press("volumemute")
+            say("Unmuted.")
+            continue
+
+        # -------- BRIGHTNESS CONTROL -------- #
+        if "increase brightness" in query:
+            sbc.set_brightness("+10")
+            say("Brightness increased.")
+            continue
+
+        if "decrease brightness" in query:
+            sbc.set_brightness("-10")
+            say("Brightness decreased.")
+            continue
+
+        if "set brightness to" in query:
+            try:
+                level = int(query.split("set brightness to")[1].strip().replace("%", ""))
+                sbc.set_brightness(level)
+                say(f"Brightness set to {level} percent.")
+            except:
+                say("I couldn't understand the brightness level.")
+            continue
+
+        # -------- SYSTEM CONTROL -------- #
+        if "shutdown" in query:
+            say("Shutting down. Goodbye Vaid.")
+            os.system("shutdown /s /t 1")
+            continue
+
+        if "restart" in query:
+            say("Restarting your system.")
+            os.system("shutdown /r /t 1")
+            continue
+
+        if "sleep" in query:
+            say("Putting system to sleep.")
+            os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")
+            continue
+
+        if "lock" in query:
+            say("Locking your system.")
+            os.system("rundll32.exe user32.dll,LockWorkStation")
+            continue
+
+        # -------- OPEN CAMERA -------- #
+        if "open camera" in query or "camera" in query:
+            say("Opening camera.")
+            os.system("start microsoft.windows.camera:")
+            continue
+
+        # -------- SCREENSHOT -------- #
+        if "screenshot" in query or "take screenshot" in query:
+            say("Taking screenshot.")
+            filename = f"screenshot_{time.time()}.png"
+            pyautogui.screenshot(filename)
+            say("Screenshot saved.")
+            continue
+
+        # -------- MEMORY COMMAND -------- #
+        if "remember this" in query or "save this" in query:
+            say("Okay Vaid, tell me what to remember.")
+            info = takeCommand()
+
+            save_memory(f"{datetime.datetime.now()} - {info}")
+            long_term_memory = load_memory()
+
+            say("Got it. I will remember that.")
             continue
 
         # -------- WHATSAPP -------- #
@@ -456,34 +538,26 @@ if __name__ == '__main__':
 
             result = send_whatsapp_message(name, message)
             say(result)
-            matched = True
             continue
 
         # -------- EMAIL -------- #
-        if "send email" in query or "send a mail" in query:
+        if "send email" in query:
             say("Who do you want to send the email to?")
             name = takeCommand().lower()
 
             say("What should I say?")
             message = takeCommand()
 
-            result = send_email(name, message)
-            say(result)
-            matched = True
+            say(send_email(name, message))
             continue
 
         # -------- GREETING -------- #
-        greeting_words = ["hi", "hello", "hey"]
-
-        if query.strip() in greeting_words or query.strip() in [f"{g} sentio" for g in greeting_words]:
+        if query.strip() in ["hi", "hello", "hey", "hello sentio", "hi sentio"]:
             say(f"Hello {USER_NAME}, I'm right here. How can I help you?")
-            matched = True
             continue
 
         # -------- WAKE WORD -------- #
-        wake_words = ["sentio", "hey sentio", "ok sentio"]
-
-        if query.strip() in wake_words:
+        if query.strip() in ["sentio", "hey sentio", "ok sentio"]:
             say("Yes Vaid, I'm listening.")
             conversation_mode = True
             continue
@@ -491,68 +565,14 @@ if __name__ == '__main__':
         if conversation_mode:
             conversation_mode = False
 
-        # -------- SPOTIFY -------- #
-        if ("play" in query and "song" in query) or query.startswith("play "):
-            say("Which song should I play, Vaid?")
-            song = takeCommand().lower()
-
-            if song != "":
-                say(f"Playing {song} on Spotify.")
-                url = f"https://open.spotify.com/search/{song.replace(' ', '%20')}"
-                webbrowser.open(url)
-                matched = True
-                continue
-            else:
-                say("I couldn't hear the song name. Please try again.")
-                continue
-
-        # -------- MEMORY COMMAND (STEP 5) -------- #
-        if "remember this" in query or "save this" in query:
-            say("Okay Vaid, tell me what to remember.")
-            info = takeCommand()
-
-            save_memory(f"{datetime.datetime.now()} - {info}")
-            long_term_memory = load_memory()
-
-            say("Got it. I will remember that.")
-            matched = True
-            continue
-
-        # -------- OPEN ANY WEBSITE -------- #
+        # -------- WEBSITE OPEN -------- #
         if query.startswith("open "):
             site_name = query.replace("open ", "").strip().replace(" ", "")
-            url = f"https://www.{site_name}.com"
             say(f"Opening {site_name}...")
-            webbrowser.open(url)
-            matched = True
+            webbrowser.open(f"https://www.{site_name}.com")
             continue
 
-        # -------- PRESET WEBSITES -------- #
-        sites = [
-            ["youtube", "https://www.youtube.com"],
-            ["wikipedia", "https://www.wikipedia.com"],
-            ["gemini", "https://gemini.google.com/"],
-            ["google", "https://www.google.com"],
-            ["instagram", "https://www.instagram.com"],
-            ["linkedin", "https://www.linkedin.com"],
-            ["spotify", "https://www.spotify.com"]
-        ]
-
-        for site in sites:
-            if f"open {site[0]}" in query:
-                say(f"Opening {site[0]} Sir...")
-                webbrowser.open(site[1])
-                matched = True
-                break
-
-        # -------- EXIT -------- #
-        if "exit" in query or "quit" in query or "stop" in query:
-            say(f"Goodbye, {USER_NAME}! See you soon.")
-            break
-
-        # -------- DEFAULT CHAT -------- #
-        if not matched:
-            chat_with_sentio(query)
-
+        # -------- DEFAULT AI CHAT -------- #
+        chat_with_sentio(query)
 
 
