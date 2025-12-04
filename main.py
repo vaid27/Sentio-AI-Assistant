@@ -312,8 +312,6 @@ def set_alarm(time_string):
         return False
 
 
-
-
 if __name__ == '__main__':
     print("PyCharm")
 
@@ -560,6 +558,21 @@ if __name__ == '__main__':
 
         if conversation_mode:
             conversation_mode = False
+
+         # -------- SPOTIFY SONG PLAYER -------- #
+        if ("play" in query and "song" in query) or query.startswith("play "):
+            say("Which song should I play, Vaid?")
+            song = takeCommand().lower()
+
+            if song != "":
+                say(f"Playing {song} on Spotify.")
+                search_url = f"https://open.spotify.com/search/{song.replace(' ', '%20')}"
+                webbrowser.open(search_url)
+                matched = True
+                continue
+            else:
+                say("I couldn't hear the song name. Please try again.")
+                continue
 
         # -------- WEBSITE OPEN -------- #
         if query.startswith("open "):
