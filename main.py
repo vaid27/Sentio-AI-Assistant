@@ -233,6 +233,25 @@ def send_whatsapp_message(name, message):
         return f"WhatsApp message sent to {real_name}."
     except:
         return "Sorry, I could not send the WhatsApp message."
+    
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+
+def get_weather(city):
+    try:
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
+        data = requests.get(url).json()
+
+        if data.get("cod") != 200:
+            return None
+
+        temp = data["main"]["temp"]
+        feels = data["main"]["feels_like"]
+        desc = data["weather"][0]["description"].title()
+
+        return f"The weather in {city.title()} is {desc} with a temperature of {temp}°C, feels like {feels}°C."
+    except:
+        return None
+
 
 
 GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
@@ -259,13 +278,35 @@ def get_news(category="general"):
     headlines = [a["title"] for a in articles]
     return headlines
 
+import threading
+
+def start_timer(seconds):
+    def timer_thread():
+        time.sleep(seconds)
+        say("Your timer is complete, Vaid!")
+    threading.Thread(target=timer_thread).start()
+
+def set_alarm(time_string):
+    try:
+        say(f"Alarm set for {time_string}")
+        os.system(f'schtasks /create /sc once /tn "SentioAlarm" /tr "cmd /c echo Alarm! && pause" /st {time_string}')
+        return True
+    except:
+        return False
+
 
 
 
 
 if __name__ == '__main__':
     print("PyCharm")
+    print("Testing Weather API…")
+    print(requests.get(
+        f"https://api.openweathermap.org/data/2.5/weather?q=Delhi&appid={WEATHER_API_KEY}&units=metric"
+    ).json())
 
+    alarms = {}   # store alarms
+    timers = {}   # store timers
 
     while True:
         print('Listening...')
@@ -309,6 +350,8 @@ if __name__ == '__main__':
                 category = "sports"
             elif "tech" in category or "technology" in category:
                 category = "technology"
+            elif "global" in category:
+                category = "global"
             else:
                 category = "general"
 
@@ -317,6 +360,75 @@ if __name__ == '__main__':
             say("Here are the top news headlines.")
             for line in headlines:
                 say(line)
+
+            matched = True
+            continue
+
+        # -------- WEATHER FEATURE -------- #
+        if "weather" in query or "temperature" in query:
+            say("Which city should I check, Vaid?")
+            city = takeCommand().lower()
+
+            weather_info = get_weather(city)
+
+            if weather_info:
+                say(weather_info)
+            else:
+                say("Sorry, I couldn't fetch the weather for that city.")
+
+            matched = True
+            continue
+
+        # -------- TIMER -------- #
+        if "set a timer" in query or "set timer" in query:
+            say("For how many minutes?")
+            duration = takeCommand().lower()
+
+            try:
+                minutes = int(duration.split()[0])
+                seconds = minutes * 60
+                say(f"Timer set for {minutes} minutes.")
+
+                def run_timer(sec):
+                    time.sleep(sec)
+                    say("Time's up, Vaid!")
+
+                import threading
+                threading.Thread(target=run_timer, args=(seconds,), daemon=True).start()
+            except:
+                say("Sorry, I couldn't understand the timer duration.")
+
+            matched = True
+            continue
+
+        # -------- ALARM -------- #
+        if "set alarm" in query or "alarm for" in query:
+            say("At what time should I set the alarm?")
+            alarm_time = takeCommand().lower()
+
+            try:
+                # Example: "7 am", "6 30 am"
+                alarm_time_24 = datetime.datetime.strptime(alarm_time, "%I %M %p").strftime("%H:%M")
+            except:
+                try:
+                    alarm_time_24 = datetime.datetime.strptime(alarm_time, "%I %p").strftime("%H:%M")
+                except:
+                    say("Sorry, I couldn't understand the alarm time.")
+                    matched = True
+                    continue
+            
+            say(f"Alarm set for {alarm_time}.")
+
+            def alarm_checker(target_time):
+                while True:
+                    now = datetime.datetime.now().strftime("%H:%M")
+                    if now == target_time:
+                        say("Vaid, your alarm is ringing!")
+                        break
+                    time.sleep(20)
+
+            import threading
+            threading.Thread(target=alarm_checker, args=(alarm_time_24,), daemon=True).start()
 
             matched = True
             continue
